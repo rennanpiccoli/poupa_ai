@@ -37,6 +37,19 @@ export function ResultPanel({ result, list, onAnswer }: Props) {
 
   if (!plan) return <p className="text-sm text-zinc-500">Sem preços suficientes para comparar.</p>;
 
+  // "Everything in one store": total per chain + items it doesn't have.
+  const perChain = CHAINS.map((chain) => {
+    let total = 0;
+    let missing = 0;
+    for (const i of list.items) {
+      const c = result.choices[i.id]?.[chain];
+      if (c) total += c.product.priceCents * i.qty;
+      else missing++;
+    }
+    return { chain, total, missing };
+  }).filter((c) => c.missing < list.items.length);
+  const cheapestFull = Math.min(...perChain.filter((c) => c.missing === 0).map((c) => c.total));
+
   return (
     <section className="flex flex-col gap-3">
       {plans.length > 1 && (
@@ -73,6 +86,29 @@ export function ResultPanel({ result, list, onAnswer }: Props) {
           </p>
         )}
       </div>
+
+      {perChain.length > 1 && (
+        <div className="rounded-xl bg-white px-3 py-2">
+          <p className="mb-1 text-xs font-medium text-zinc-500">Se comprasses tudo numa só loja</p>
+          <ul className="flex flex-col gap-1 text-sm">
+            {perChain.map(({ chain, total, missing }) => (
+              <li key={chain} className="flex items-center justify-between">
+                <ChainBadge chain={chain} />
+                <span
+                  className={`tabular-nums ${total === cheapestFull && !missing ? "font-semibold text-emerald-700" : ""}`}
+                >
+                  {eur(total)}
+                  {missing > 0 && (
+                    <span className="ml-1 text-xs text-amber-700">
+                      (falta{missing > 1 ? `m ${missing}` : " 1"})
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {questions.length > 0 && (
         <div className="flex flex-col gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
@@ -122,9 +158,7 @@ export function ResultPanel({ result, list, onAnswer }: Props) {
                 const item = byId.get(id);
                 const choice = result.choices[id][chain]!;
                 const p = choice.product;
-                const others = CHAINS.filter((c) => c !== chain && result.choices[id][c])
-                  .map((c) => `${CHAIN_NAMES[c]} ${eur(result.choices[id][c]!.product.priceCents)}`)
-                  .join(" · ");
+                const all = CHAINS.filter((c) => result.choices[id][c]);
                 return (
                   <li key={id} className="px-3 py-2 text-sm">
                     <div className="flex justify-between gap-2">
@@ -147,9 +181,35 @@ export function ResultPanel({ result, list, onAnswer }: Props) {
                         Promoção (antes {eur(p.regularPriceCents)}){p.promoText ? ` · ${p.promoText}` : ""}
                       </p>
                     )}
-                    <p className="text-xs text-zinc-400">
+                    <div className="mt-1 flex flex-wrap gap-1 text-xs">
+                      {all.map((c) => {
+                        const ch = result.choices[id][c]!;
+                        return (
+                          <a
+                            key={c}
+                            href={ch.product.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={ch.product.name}
+                            className={`rounded-md px-1.5 py-0.5 tabular-nums ${c === chain ? "bg-emerald-100 font-medium text-emerald-800" : "bg-zinc-100 text-zinc-600"}`}
+                          >
+                            {CHAIN_NAMES[c]} {eur(ch.product.priceCents)}
+                            {ch.substitute && " ≈"}
+                          </a>
+                        );
+                      })}
+                      {all.length < CHAINS.length && (
+                        <span className="px-1.5 py-0.5 text-zinc-400">
+                          sem em{" "}
+                          {CHAINS.filter((c) => !all.includes(c))
+                            .map((c) => CHAIN_NAMES[c])
+                            .join(", ")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-zinc-400">
                       preço visto {seenLabel(p.seenAt)}
-                      {others && ` · ${others}`}
+                      {all.some((c) => result.choices[id][c]!.substitute) && " · ≈ = parecido"}
                     </p>
                   </li>
                 );
