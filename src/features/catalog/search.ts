@@ -206,5 +206,6 @@ export function rowToProduct(r: typeof chainProducts.$inferSelect): ChainProduct
     imageUrl: r.imageUrl,
     available: r.available,
     ean: r.ean,
+    seenAt: r.priceSeenAt,
   };
 }

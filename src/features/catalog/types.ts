@@ -25,6 +25,7 @@ export interface ChainProduct {
   imageUrl: string | null;
   available: boolean;
   ean: string | null; // only from product pages (and never for Pingo Doce)
+  seenAt?: Date; // when this price was read (set when loaded from the DB)
 }
 
 /** What a product page adds on top of the search tile. */
