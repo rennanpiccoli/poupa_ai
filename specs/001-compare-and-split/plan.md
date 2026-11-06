@@ -17,7 +17,8 @@ A lista vive no aparelho (localStorage). O servidor recebe `{itens, modo, maxSto
 | `src/features/matching/` | Correspondência entre redes: EAN → regra (marca + nome + tamanho) → ambíguo |
 | `src/features/equivalence/` | "Aceito parecido" V0: nome-base + tamanho ±10%, mais barato por unidade |
 | `src/features/smart-split/` | Já existe; ganha o adaptador lista → `PriceTable` |
-| `src/app/api/search`, `src/app/api/compare`, `src/app/api/match` | Route handlers |
+| `src/app/api/search`, `src/app/api/compare`, `src/app/api/match` | Route handlers (o `compare` resolve os itens nas redes; não há `/api/resolve` separado) |
+| `src/features/smart-split/compare.ts`, `src/features/shopping-list/compare-service.ts` | Escolha exato/parecido por rede (puro) + orquestração |
 | `src/proxy.ts` | Código de acesso (cookie) para `/api/*` e páginas |
 | `src/app/page.tsx` + `src/features/shopping-list/` | UI: busca, lista, seletor exato/parecido, paradas, resultado |
 | `src/collector/refresh.ts` | Job diário: reconsulta as páginas dos produtos usados nos últimos 30 dias |
