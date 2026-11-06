@@ -1,0 +1,18 @@
+# CI: runs on every PR. Nothing is published here. Also called by deploy.yml before publishing.
+name: ci
+on:
+  pull_request:
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: make install
+      - run: make lint
+      - run: make test
