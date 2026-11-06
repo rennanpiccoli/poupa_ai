@@ -18,7 +18,7 @@ run: migrate ## dev server on http://localhost:3000
 collect: db ## run price collectors once
 	npm run collect
 
-test:
+test: db ## unit + integration tests (uses database supermkt_test)
 	npm test
 
 lint:
