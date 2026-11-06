@@ -19,7 +19,7 @@ flowchart LR
 | Componente | Responsabilidade | Onde no código |
 |---|---|---|
 | Smart Split | Melhor combinação de 1..N redes para a lista (força bruta, exata) | `src/features/smart-split/` |
-| Equivalência | Regras de "aceito parecido" (categoria + nutrientes + €/kg) | `src/features/equivalence/` (spec futura) |
+| Equivalência | "Aceito parecido": V0 por nome-base sem marca + mesmos atributos (sabor, dieta, gordura) + tamanho ±10% + menor €/L·kg; nutrição (Open Food Facts) em spec futura | `src/features/equivalence/` |
 | Lista / preços / lojas | Telas e casos de uso de cada feature | `src/features/<feature>/` |
 | API + UI | Páginas, route handlers, `/api/health`, manifest PWA | `src/app/` |
 | Catálogo | Parsers por rede (puros), fetch, cache de busca | `src/features/catalog/` |

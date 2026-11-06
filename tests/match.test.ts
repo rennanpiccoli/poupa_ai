@@ -110,6 +110,11 @@ describe("decideMatch on real Pingo Doce results", () => {
     if (d.kind === "ask") expect(d.candidates.map((c) => c.candidate.sku)).toEqual(["951765", "999"]);
   });
 
+  it("flavour or dietary difference is never the same product", () => {
+    const cacao = pingodoce.find((x) => x.sku === "1016857")!; // Leite Proteico com Cacau sem Lactose 1 L
+    expect(matchScore(mimosaC, cacao)).toBe(0);
+  });
+
   it("skips candidates the user rejected", () => {
     expect(decideMatch(mimosaC, pingodoce, new Set(["951765"])).kind).not.toBe("auto");
   });

@@ -29,6 +29,7 @@ export const chainProducts = pgTable(
     sizeDimension: text("size_dimension"), // "volume" | "mass" | "count"
     sizeAmount: doublePrecision("size_amount"), // ml, g or units
     sizePacks: integer("size_packs"),
+    sizeDrained: doublePrecision("size_drained"), // drained weight in g (canned food)
     category: text("category"),
     url: text("url").notNull(),
     imageUrl: text("image_url"),

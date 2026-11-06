@@ -10,6 +10,8 @@ export interface Size {
   amount: number;
   /** Number of packs (6 in "6 x 1 L"). 1 when not a multipack. */
   packs: number;
+  /** Drained weight (canned food), total in g. Pingo Doce shows only this one as the size. */
+  drained?: number;
 }
 
 const UNITS: Record<string, { dimension: Dimension; factor: number }> = {
@@ -41,12 +43,29 @@ const UNIT = Object.keys(UNITS)
 const SIZE_RE = new RegExp(String.raw`(?:(\d+)\s*[x×]\s*)?(${NUM})\s*(${UNIT})(?![\p{L}])`, "giu");
 
 const toNumber = (s: string) => Number(s.replace(",", "."));
+const round = (n: number) => Math.round(n * 1000) / 1000;
+
+/** Amount used to compare prices: drained weight when known (what you actually eat). */
+export const comparableAmount = (s: Size) => s.drained ?? s.amount;
 
 export function parseSize(text: string): Size | null {
-  const t = text
-    .toLowerCase()
-    .normalize("NFC")
-    .replace(/\([^)]*\)/g, " "); // "1000 gr (8 un)" → the parenthetical is a detail
+  let t = text.toLowerCase().normalize("NFC");
+
+  // Drained weight, before parentheses are dropped:
+  //   Continente "emb. 120 gr (peso escorrido 85 gr)" · Auchan "ATUM … 120 (78) G"
+  let drainedRaw: number | null = null;
+  const pe = t.match(new RegExp(String.raw`peso\s+escorrido\s+(${NUM})\s*(${UNIT})(?![\p{L}])`, "u"));
+  if (pe && UNITS[pe[2]]?.dimension === "mass") drainedRaw = toNumber(pe[1]) * UNITS[pe[2]].factor;
+  t = t.replace(
+    new RegExp(String.raw`(${NUM})\s*\((${NUM})\)\s*(${UNIT})(?![\p{L}])`, "gu"),
+    (_, gross, drained, unit) => {
+      if (UNITS[unit]?.dimension === "mass") drainedRaw = toNumber(drained) * UNITS[unit].factor;
+      return `${gross} ${unit}`;
+    },
+  );
+  // "120GX5" (unit before the pack count) → "5 x 120 g"
+  t = t.replace(new RegExp(String.raw`(${NUM})\s*(${UNIT})\s*[x×]\s*(\d+)(?![\d.,])`, "gu"), "$3 x $1 $2");
+  t = t.replace(/\([^)]*\)/g, " "); // "1000 gr (8 un)" → the parenthetical is a detail
 
   const matches = [...t.matchAll(SIZE_RE)];
   if (matches.length > 0) {
@@ -54,9 +73,13 @@ export function parseSize(text: string): Size | null {
     const m = matches[matches.length - 1];
     const packs = m[1] ? Number(m[1]) : 1;
     const unit = UNITS[m[3]];
-    const amount = Math.round(packs * toNumber(m[2]) * unit.factor * 1000) / 1000;
+    const amount = round(packs * toNumber(m[2]) * unit.factor);
     if (amount <= 0) return null;
-    return { dimension: unit.dimension, amount, packs };
+    const size: Size = { dimension: unit.dimension, amount, packs };
+    if (drainedRaw !== null && unit.dimension === "mass" && drainedRaw < amount / packs + 1e-9) {
+      size.drained = round(packs * drainedRaw);
+    }
+    return size;
   }
 
   if (/\bmeia\s+d[uú]zia\b/u.test(t)) return { dimension: "count", amount: 6, packs: 1 };
@@ -74,7 +97,7 @@ export type UnitLabel = "L" | "kg" | "un";
 export function unitPrice(priceCents: number, size: Size): { cents: number; per: UnitLabel } {
   if (size.dimension === "count") return { cents: Math.round(priceCents / size.amount), per: "un" };
   return {
-    cents: Math.round((priceCents * 1000) / size.amount),
+    cents: Math.round((priceCents * 1000) / comparableAmount(size)),
     per: size.dimension === "volume" ? "L" : "kg",
   };
 }

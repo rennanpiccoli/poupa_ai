@@ -27,6 +27,7 @@ As 3 redes da V0 usam **Salesforce Commerce Cloud** (URLs `/on/demandware.store/
 | Pingo Doce | `https://www.pingodoce.pt/on/demandware.store/Sites-pingo-doce-Site/default/Search-Show?q=<termo>` | tiles com `data-pid`, `<span class="value" content="1.94">`, €/L | JSON-LD **sem EAN** (só `sku`, `name`, `brand`); preço em `.sales .value[content]` |
 
 - Exemplo real (mesmo produto, EAN 5603722522093, Leite Mimosa Proteína 1 L): Continente 2,49 € · Auchan 1,99 € · Pingo Doce 1,94 €.
+- **Enlatados (peso escorrido):** Continente mostra "emb. 120 gr (peso escorrido 78 gr)", Auchan "120 (78) G" e o Pingo Doce **só o escorrido** ("0.078 Kg"). O tamanho guarda os dois (`size.drained`); a correspondência aceita qualquer um, e o €/kg usa o escorrido.
 - **Busca por EAN:** Continente e Auchan aceitam o código de barras no campo de busca e devolvem exatamente o produto (✅ 2026-11-06). O Pingo Doce devolve 0 resultados.
 - O Pingo Doce não expõe o EAN → correspondência por marca + nome-base + tamanho ([spec 001](../../specs/001-compare-and-split/spec.md)).
 - Os sites respondem a um `curl` com User-Agent de navegador, sem login nem JS.

@@ -129,6 +129,7 @@ export async function saveProducts(db: Db, products: ChainProduct[], now: Date) 
     sizeDimension: p.size?.dimension ?? null,
     sizeAmount: p.size?.amount ?? null,
     sizePacks: p.size?.packs ?? null,
+    sizeDrained: p.size?.drained ?? null,
     category: p.category,
     url: p.url,
     imageUrl: p.imageUrl,
@@ -151,6 +152,7 @@ export async function saveProducts(db: Db, products: ChainProduct[], now: Date) 
         sizeDimension: ex("size_dimension"),
         sizeAmount: ex("size_amount"),
         sizePacks: ex("size_packs"),
+        sizeDrained: ex("size_drained"),
         category: ex("category"),
         url: ex("url"),
         imageUrl: sql`coalesce(excluded.image_url, ${chainProducts.imageUrl})`,
@@ -196,6 +198,7 @@ export function rowToProduct(r: typeof chainProducts.$inferSelect): ChainProduct
             dimension: r.sizeDimension as "volume" | "mass" | "count",
             amount: r.sizeAmount,
             packs: r.sizePacks ?? 1,
+            ...(r.sizeDrained !== null ? { drained: r.sizeDrained } : {}),
           }
         : null,
     category: r.category,

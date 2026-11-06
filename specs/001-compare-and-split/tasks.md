@@ -8,7 +8,7 @@ Cada tarefa: pequena, testável, um commit.
 - [x] 4. Schema + migration: `chain_products`, `search_cache`, `product_matches` — pronto quando: `make migrate` aplica e `drizzle-kit check` passa
 - [x] 5. `fetch.ts` + `search.ts`: busca paralela nas 3 redes, timeout de 8 s, cache de 24 h, falha isolada por rede — pronto quando: teste de integração (fetch simulado + Postgres) mostra a 1ª chamada indo à "rede" e a 2ª vindo do cache
 - [x] 6. Matching: EAN → regra (marca + nome-base + tamanho) → ambíguo; enriquecer o EAN pela página do produto quando faltar — pronto quando: o caso Mimosa liga as 3 redes no teste
-- [ ] 7. Equivalência V0 ("aceito parecido") — pronto quando: os testes mostram troca válida e recusa por tamanho/nome diferente
+- [x] 7. Equivalência V0 ("aceito parecido") — pronto quando: os testes mostram troca válida e recusa por tamanho/nome diferente
 - [ ] 8. API: `GET /api/search`, `POST /api/compare` (lista → planos 1/2/3), `POST /api/match` (confirmar correspondência) — pronto quando: teste de rota com dados semeados devolve o plano esperado
 - [ ] 9. UI: busca com resultados, lista no aparelho, seletor exato/parecido, quantidade, paradas 1/2/3, resultado do Smart Split com trocas, links e datas — pronto quando: fluxo completo funciona no celular em `make run`
 - [ ] 10. Código de acesso (`src/proxy.ts` + `APP_ACCESS_CODE`) — pronto quando: sem cookie → 401 em `/api/*`, `/api/health` livre

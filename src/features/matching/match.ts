@@ -34,7 +34,6 @@ const SYNONYMS: Record<string, string> = {
   chocolate: "cacau",
   choco: "cacau",
   achocolatado: "cacau",
-  meio: "meiogordo", // "meio gordo" → one token (see below)
 };
 
 /** Words that make two products different when only one of them has it. */
@@ -84,24 +83,37 @@ const SIZE_RE =
 
 /** Name without brand, size, stopwords; synonyms unified. Order-independent set. */
 export function baseTokens(name: string, brand: string | null): Set<string> {
-  const brandWords = new Set(
-    strip(brand ?? "")
-      .split(/[^a-z0-9]+/)
-      .filter(Boolean),
-  );
-  const text = strip(name)
+  let text = ` ${strip(name)} `;
+  // Remove the brand as a whole phrase ("Pingo Doce"), so "doce de leite" keeps its "doce".
+  const b = strip(brand ?? "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  if (b)
+    text = text.replace(
+      new RegExp(`(^|[^a-z0-9])${b.replace(/ /g, "[^a-z0-9]+")}(?=[^a-z0-9]|$)`, "g"),
+      "$1 ",
+    );
+  text = text
+    .replace(/\(\s*[\d.,]+\s*\)/g, " ") // "120 (78) g" → "120 g" before removing the size
     .replace(SIZE_RE, " ")
+    .replace(/\bm\s*\/\s*gordo\b/g, "meiogordo")
     .replace(/\bmeio[\s-]+gordo\b/g, "meiogordo")
+    .replace(/\b0\s*%\s*lactose\b/g, "sem lactose")
     .replace(/\bx\b/g, " ");
   const out = new Set<string>();
   for (const raw of text.split(/[^a-z0-9]+/)) {
-    if (!raw || /^\d+$/.test(raw) || STOPWORDS.has(raw) || brandWords.has(raw)) continue;
+    if (!raw || /^\d+$/.test(raw) || STOPWORDS.has(raw)) continue;
     out.add(SYNONYMS[raw] ?? raw);
   }
   return out;
 }
 
-const weight = (t: string) => (VARIANT_WORDS.has(t) ? VARIANT_WEIGHT : 1);
+/** Dietary words: "sem lactose" / "proteína" / "sem glúten" must not be swapped for the regular one. */
+const DIETARY_WORDS = new Set(["proteina", "lactose", "gluten"]);
+const DIETARY_WEIGHT = 2;
+
+const weight = (t: string) =>
+  VARIANT_WORDS.has(t) ? VARIANT_WEIGHT : DIETARY_WORDS.has(t) ? DIETARY_WEIGHT : 1;
 
 /** Weighted Dice similarity of two token sets, 0..1. */
 export function similarity(a: Set<string>, b: Set<string>): number {
@@ -118,19 +130,46 @@ export function similarity(a: Set<string>, b: Set<string>): number {
 export const sameBrand = (a: string | null, b: string | null) =>
   !!a && !!b && strip(a).replace(/[^a-z0-9]/g, "") === strip(b).replace(/[^a-z0-9]/g, "");
 
-/** Same dimension, same packs, amount within 1 % (e.g. 0.33 L ≈ 330 ml). */
-export function sameSize(a: ChainProduct["size"], b: ChainProduct["size"]): boolean {
-  if (!a || !b) return false;
-  if (a.dimension !== b.dimension || a.packs !== b.packs) return false;
-  return Math.abs(a.amount - b.amount) <= Math.max(a.amount, b.amount) * 0.01;
+/** Amounts a size can be compared by: gross and, for canned food, drained weight. */
+export const comparableAmounts = (s: NonNullable<ChainProduct["size"]>) =>
+  s.drained !== undefined ? [s.amount, s.drained] : [s.amount];
+
+/**
+ * Same dimension, same packs, amount within `tolerance`. Pingo Doce shows only the drained weight
+ * of canned food (0.078 kg) where others show "120 gr (peso escorrido 78 gr)" → any amount may match.
+ */
+export function sizesMatch(a: ChainProduct["size"], b: ChainProduct["size"], tolerance: number): boolean {
+  if (!a || !b || a.dimension !== b.dimension || a.packs !== b.packs) return false;
+  return comparableAmounts(a).some((x) =>
+    comparableAmounts(b).some((y) => Math.abs(x - y) <= Math.max(x, y) * tolerance),
+  );
 }
 
-/** 0 when brand, size or fat level differ; otherwise base-name similarity. */
+/** Same size for "same product": 1 % tolerance (0.33 L ≈ 330 ml). */
+export const sameSize = (a: ChainProduct["size"], b: ChainProduct["size"]) => sizesMatch(a, b, 0.01);
+
+const attributes = (tokens: Set<string>) =>
+  [...tokens]
+    .filter((t) => VARIANT_WORDS.has(t) || DIETARY_WORDS.has(t))
+    .sort()
+    .join(",");
+
+/**
+ * Base-name similarity ignoring brand and size. 0 when the products are incompatible:
+ * different fat level, or different flavour/dietary words ("Leite Proteína" vs "… Cacau").
+ * Used both for "same product" (match) and "acceptable substitute" (equivalence).
+ */
+export function nameScore(a: ChainProduct, b: ChainProduct): number {
+  const ta = baseTokens(a.name, a.brand);
+  const tb = baseTokens(b.name, b.brand);
+  if (fatConflict(ta, tb) || attributes(ta) !== attributes(tb)) return 0;
+  return similarity(ta, tb);
+}
+
+/** Same product? 0 when brand or size differ; otherwise nameScore (which also checks attributes). */
 export function matchScore(target: ChainProduct, candidate: ChainProduct): number {
   if (!sameBrand(target.brand, candidate.brand) || !sameSize(target.size, candidate.size)) return 0;
-  const a = baseTokens(target.name, target.brand);
-  const b = baseTokens(candidate.name, candidate.brand);
-  return fatConflict(a, b) ? 0 : similarity(a, b);
+  return nameScore(target, candidate);
 }
 
 export const AUTO_SCORE = 0.8; // link without asking

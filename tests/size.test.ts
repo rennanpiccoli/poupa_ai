@@ -37,6 +37,36 @@ describe("parseSize", () => {
     expect(parseSize(text)).toEqual({ dimension, amount, packs });
   });
 
+  it("drained weight of canned food (atum)", () => {
+    expect(parseSize("emb. 120 gr (peso escorrido 85 gr)")).toEqual({
+      dimension: "mass",
+      amount: 120,
+      packs: 1,
+      drained: 85,
+    });
+    expect(parseSize("ATUM POSTA AUCHAN EM ÓLEO 120 (78) G")).toEqual({
+      dimension: "mass",
+      amount: 120,
+      packs: 1,
+      drained: 78,
+    });
+    expect(parseSize("ATUM EM ÓLEO BOM PETISCO 200(130)G")).toEqual({
+      dimension: "mass",
+      amount: 200,
+      packs: 1,
+      drained: 130,
+    });
+    expect(parseSize("0.078 Kg")).toEqual({ dimension: "mass", amount: 78, packs: 1 }); // Pingo Doce: only one number
+  });
+
+  it("unit before pack count: '120GX5'", () => {
+    expect(parseSize("ATUM EM ÓLEO BOM PETISCO PACK POUPANÇA 120GX5")).toEqual({
+      dimension: "mass",
+      amount: 600,
+      packs: 5,
+    });
+  });
+
   it("returns null when there is no size", () => {
     expect(parseSize("Leite Proteína sem Lactose Mimosa")).toBeNull();
     expect(parseSize("Iogurte 0% gordura")).toBeNull();
@@ -48,6 +78,13 @@ describe("parseSize", () => {
 });
 
 describe("unitPrice", () => {
+  it("uses the drained weight when known", () => {
+    // 0,99 € for 120 g (85 g drained) → 11,65 €/kg drained
+    expect(unitPrice(99, { dimension: "mass", amount: 120, packs: 1, drained: 85 })).toEqual({
+      cents: 1165,
+      per: "kg",
+    });
+  });
   it("€/L for volume", () => {
     // 6 x 33 cl at 3,99 € → 3.99 / 1.98 L = 2,02 €/L
     expect(unitPrice(399, { dimension: "volume", amount: 1980, packs: 6 })).toEqual({ cents: 202, per: "L" });
