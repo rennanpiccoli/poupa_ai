@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint && tsc --noEmit && prettier --check .",
+    "lint": "eslint && next typegen && tsc --noEmit && prettier --check .",
     "format": "prettier --write .",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
