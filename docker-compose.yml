@@ -1,0 +1,54 @@
+# Same file locally and on the VPS.
+# Local dev: `make run` starts only `db` and runs `next dev` on the host.
+# VPS: deploy/deploy.sh sets IMAGE_TAG (commit SHA) and runs the whole stack.
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-supermkt}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-app}"]
+      interval: 5s
+      retries: 10
+
+  app:
+    image: ${IMAGE:-supermkt}:${IMAGE_TAG:-local}
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Jobs: not started by `up`. Run explicitly:
+  #   docker compose run --rm migrate
+  #   docker compose run --rm collector   (daily cron on the VPS)
+  migrate:
+    image: ${IMAGE:-supermkt}:${IMAGE_TAG:-local}
+    profiles: ["jobs"]
+    env_file: .env
+    command: ["node", "dist/shared/db/migrate.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  collector:
+    image: ${IMAGE:-supermkt}:${IMAGE_TAG:-local}
+    profiles: ["jobs"]
+    env_file: .env
+    command: ["node", "dist/collector/index.js"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

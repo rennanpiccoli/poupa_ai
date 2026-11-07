@@ -1,0 +1,1 @@
+ALTER TABLE "chain_products" ADD COLUMN "size_drained" double precision;
